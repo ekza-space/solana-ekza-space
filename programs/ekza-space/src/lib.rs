@@ -19,20 +19,21 @@ pub mod solana_ekza_space {
 
     /// Initialize global config PDA.
     pub fn init_config(ctx: Context<InitConfig>, args: InitConfigArgs) -> Result<()> {
-        instructions::init_config(ctx, args)
+            instructions::init_config(ctx, args)
     }
 
     /// Update mutable parts of config.
     pub fn update_config(ctx: Context<UpdateConfig>, args: UpdateConfigArgs) -> Result<()> {
-        instructions::update_config(ctx, args)
+            instructions::update_config(ctx, args)
     }
 
     /// Mint next available space and create its PDA.
     pub fn mint_next_space(
         ctx: Context<MintNextSpace>,
         space_id: u32,
+            uri: Option<String>,
     ) -> Result<()> {
-        instructions::mint_next_space(ctx, space_id)
+            instructions::mint_next_space(ctx, space_id, uri)
     }
 
     /// Update editable settings for a space.
@@ -40,7 +41,7 @@ pub mod solana_ekza_space {
         ctx: Context<UpdateSpaceSettings>,
         args: UpdateSpaceSettingsArgs,
     ) -> Result<()> {
-        instructions::update_space_settings(ctx, args)
+            instructions::update_space_settings(ctx, args)
     }
 }
 

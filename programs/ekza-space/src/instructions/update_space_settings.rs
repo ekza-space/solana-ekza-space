@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::token::TokenAccount;
 
 use crate::{error::ErrorCode, events::SpaceSettingsUpdated, state::Space};
 
@@ -18,8 +18,6 @@ pub struct UpdateSpaceSettings<'info> {
         constraint = nft_token_account.amount == 1 @ ErrorCode::NftOwnershipRequired,
     )]
     pub nft_token_account: Account<'info, TokenAccount>,
-
-    pub token_program: Program<'info, Token>,
 }
 
 /// Arguments for `update_space_settings`.
@@ -43,16 +41,13 @@ pub fn update_space_settings(
     space.owner = authority.key();
 
     if let Some(name) = args.name {
-        require!(
-            name.as_bytes().len() <= Space::NAME_MAX_LEN,
-            ErrorCode::StringTooLong
-        );
+        require!(name.len() <= Space::NAME_MAX_LEN, ErrorCode::StringTooLong);
         space.name = name;
     }
 
     if let Some(description) = args.description {
         require!(
-            description.as_bytes().len() <= Space::DESC_MAX_LEN,
+            description.len() <= Space::DESC_MAX_LEN,
             ErrorCode::StringTooLong
         );
         space.description = description;

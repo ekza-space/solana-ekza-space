@@ -22,7 +22,7 @@ litesvm-test = []
 
 
 [dependencies]
-anchor-lang = "0.32.1"
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 anchor-spl = { version = "0.32.1", features = ["metadata"] }
 mpl-token-metadata = { version = "5.1.1" }
 

@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
+use anchor_lang::Space;
 
-use crate::{error::ErrorCode, state::Config};
+use crate::error::ErrorCode;
+use crate::state::Config;
 
 /// Accounts for `init_config`.
 #[derive(Accounts)]
@@ -10,7 +12,7 @@ pub struct InitConfig<'info> {
         payer = payer,
         seeds = [b"config"],
         bump,
-        space = 8 + Config::LEN
+        space = 8 + Config::INIT_SPACE
     )]
     pub config: Account<'info, Config>,
 
@@ -40,7 +42,7 @@ pub fn init_config(ctx: Context<InitConfig>, args: InitConfigArgs) -> Result<()>
     config.total_spaces = args.total_spaces;
     config.minted_spaces = 0;
     config.price_lamports = args.price_lamports;
-    config.collection_mint = args.collection_mint.unwrap_or(Pubkey::default());
+    config.collection_mint = args.collection_mint.unwrap_or_default();
     config.bump = ctx.bumps.config;
 
     Ok(())

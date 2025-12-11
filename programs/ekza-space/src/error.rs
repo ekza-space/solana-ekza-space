@@ -5,8 +5,6 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("All spaces are already minted")]
     AllSpacesMinted,
-    #[msg("Not a space owner")]
-    NotSpaceOwner,
     #[msg("Invalid space id")]
     InvalidSpaceId,
     #[msg("Treasury account does not match config")]

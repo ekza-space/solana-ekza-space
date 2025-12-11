@@ -6,6 +6,7 @@ pub const SPACE_DESC_MAX_LEN: usize = 512;
 
 /// Global configuration PDA.
 #[account]
+#[derive(InitSpace)]
 pub struct Config {
     /// Authority allowed to update config.
     pub authority: Pubkey,
@@ -23,13 +24,9 @@ pub struct Config {
     pub bump: u8,
 }
 
-impl Config {
-    /// Size of `Config` account data (without discriminator).
-    pub const LEN: usize = 32 + 32 + 4 + 4 + 8 + 32 + 1;
-}
-
 /// Per-space PDA with settings and metadata.
 #[account]
+#[derive(InitSpace)]
 pub struct Space {
     /// Unique space id (1..=total_spaces).
     pub space_id: u32,
@@ -38,8 +35,10 @@ pub struct Space {
     /// On-chain owner of the space settings.
     pub owner: Pubkey,
     /// Human-readable name of the space.
+    #[max_len(64)]
     pub name: String,
     /// Longer description.
+    #[max_len(512)]
     pub description: String,
     /// Whether other users can enter this space.
     pub is_open: bool,
@@ -54,17 +53,6 @@ pub struct Space {
 impl Space {
     pub const NAME_MAX_LEN: usize = SPACE_NAME_MAX_LEN;
     pub const DESC_MAX_LEN: usize = SPACE_DESC_MAX_LEN;
-
-    /// Size of `Space` account data (without discriminator).
-    pub const LEN: usize = 4  // space_id
-        + 32                  // mint
-        + 32                  // owner
-        + 4 + Self::NAME_MAX_LEN // name string prefix + content
-        + 4 + Self::DESC_MAX_LEN // description string prefix + content
-        + 1                   // is_open
-        + 1                   // is_editable_by_others
-        + 1                   // bump
-        + 32;                 // reserved
 }
 
 

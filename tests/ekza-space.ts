@@ -102,7 +102,7 @@ describe("ekza-space litesvm", () => {
     );
 
     await program.methods
-      .mintNextSpace(spaceId)
+      .mintNextSpace(spaceId, null)
       .accountsStrict({
         config: configPda,
         spacePda,
@@ -169,7 +169,7 @@ describe("ekza-space litesvm", () => {
       );
 
       await program.methods
-        .mintNextSpace(spaceId)
+        .mintNextSpace(spaceId, null)
         .accountsStrict({
           config: configPda,
           spacePda,
@@ -205,7 +205,7 @@ describe("ekza-space litesvm", () => {
 
     try {
       await program.methods
-        .mintNextSpace(nextSpaceId)
+        .mintNextSpace(nextSpaceId, null)
         .accountsStrict({
           config: configPda,
           spacePda: nextSpacePda,

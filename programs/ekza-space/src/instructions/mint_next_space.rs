@@ -1,15 +1,20 @@
 use anchor_lang::prelude::*;
+#[cfg(not(feature = "litesvm-test"))]
+use anchor_spl::metadata::{
+    self,
+    mpl_token_metadata::types::{Collection, DataV2},
+    CreateMetadataAccountsV3, Metadata,
+};
+use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    metadata::{self, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3, Metadata},
-    token::{self, Mint, MintTo, Token, TokenAccount},
+    token::{self, Mint, MintTo, SetAuthority, Token, TokenAccount},
 };
 
-use crate::{
-    error::ErrorCode,
-    events::SpaceMinted,
-    state::{Config, Space},
-};
+use crate::error::ErrorCode;
+use crate::events::SpaceMinted;
+use crate::state::{Config, Space};
+use anchor_lang::Space as AnchorSpace;
 
 /// Accounts for `mint_next_space`.
 #[derive(Accounts)]
@@ -25,7 +30,7 @@ pub struct MintNextSpace<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + Space::LEN,
+        space = 8 + Space::INIT_SPACE,
         seeds = [b"space", config.key().as_ref(), &space_id.to_le_bytes()],
         bump
     )]
@@ -83,7 +88,11 @@ pub struct MintNextSpace<'info> {
 /// Mint next available space and create its PDA.
 ///
 /// `space_id` must equal `config.minted_spaces + 1` and be within 1..=total_spaces.
-pub fn mint_next_space(ctx: Context<MintNextSpace>, space_id: u32) -> Result<()> {
+pub fn mint_next_space(
+    ctx: Context<MintNextSpace>,
+    space_id: u32,
+    uri: Option<String>,
+) -> Result<()> {
     let config = &mut ctx.accounts.config;
     let payer = &ctx.accounts.payer;
     let mint = &ctx.accounts.mint;
@@ -122,13 +131,37 @@ pub fn mint_next_space(ctx: Context<MintNextSpace>, space_id: u32) -> Result<()>
     let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
     token::mint_to(cpi_ctx, 1)?;
 
+    let cpi_accounts = SetAuthority {
+        account_or_mint: mint.to_account_info(),
+        current_authority: payer.to_account_info(),
+    };
+    let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+    token::set_authority(cpi_ctx, AuthorityType::MintTokens, None)?;
+
+    let cpi_accounts = SetAuthority {
+        account_or_mint: mint.to_account_info(),
+        current_authority: payer.to_account_info(),
+    };
+    let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+    token::set_authority(cpi_ctx, AuthorityType::FreezeAccount, None)?;
+
     // Create Metaplex metadata for this mint via anchor_spl::metadata CPI.
     // Disabled in litesvm-test builds.
     #[cfg(not(feature = "litesvm-test"))]
     {
         let name = format!("Ekza Space #{}", space_id);
         let symbol = "SPACE".to_string();
-        let uri = "".to_string();
+        let uri =
+            uri.unwrap_or_else(|| format!("https://meta.ekza.space/spaces/{}.json", space_id));
+
+        let collection = if config.collection_mint != Pubkey::default() {
+            Some(Collection {
+                key: config.collection_mint,
+                verified: false,
+            })
+        } else {
+            None
+        };
 
         let data = DataV2 {
             name,
@@ -136,7 +169,7 @@ pub fn mint_next_space(ctx: Context<MintNextSpace>, space_id: u32) -> Result<()>
             uri,
             seller_fee_basis_points: 0,
             creators: None,
-            collection: None,
+            collection,
             uses: None,
         };
 
@@ -153,7 +186,8 @@ pub fn mint_next_space(ctx: Context<MintNextSpace>, space_id: u32) -> Result<()>
             ctx.accounts.token_metadata_program.to_account_info(),
             cpi_accounts,
         );
-        metadata::create_metadata_accounts_v3(cpi_ctx, data, true, true, None)?;
+        // Make metadata immutable so URI/name cannot be changed later.
+        metadata::create_metadata_accounts_v3(cpi_ctx, data, false, true, None)?;
     }
 
     let space = &mut ctx.accounts.space_pda;
