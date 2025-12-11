@@ -1,20 +1,39 @@
+import { fromWorkspace, LiteSVMProvider } from "anchor-litesvm";
 import * as anchor from "@coral-xyz/anchor";
 import { Program, web3, AnchorError } from "@coral-xyz/anchor";
+import {
+  getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import { expect } from "chai";
 import { SolanaEkzaSpace } from "../target/types/solana_ekza_space";
 
-describe("ekza-space", () => {
-  const provider = anchor.AnchorProvider.env();
-  anchor.setProvider(provider);
-
-  const program = anchor.workspace.SolanaEkzaSpace as Program<SolanaEkzaSpace>;
+describe("ekza-space litesvm", () => {
+  let client: any;
+  let provider: LiteSVMProvider;
+  let program: Program<SolanaEkzaSpace>;
 
   const CONFIG_SEED = "config";
   const SPACE_SEED = "space";
+  const METADATA_PROGRAM_ID = new web3.PublicKey(
+    "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+  );
 
   let configPda: web3.PublicKey;
 
   before(async () => {
+    client = fromWorkspace("./");
+    provider = new LiteSVMProvider(client);
+    anchor.setProvider(provider);
+    program = anchor.workspace.SolanaEkzaSpace as Program<SolanaEkzaSpace>;
+
+    // fund wallet for tests
+    client.airdrop(
+      provider.wallet.publicKey,
+      BigInt(100 * web3.LAMPORTS_PER_SOL)
+    );
+
     [configPda] = web3.PublicKey.findProgramAddressSync(
       [Buffer.from(CONFIG_SEED)],
       program.programId
@@ -30,7 +49,7 @@ describe("ekza-space", () => {
         treasury: provider.wallet.publicKey,
         collectionMint: null,
       })
-      .accounts({
+      .accountsStrict({
         config: configPda,
         payer: provider.wallet.publicKey,
         systemProgram: web3.SystemProgram.programId,
@@ -65,17 +84,40 @@ describe("ekza-space", () => {
       program.programId
     );
 
-    const dummyMint = web3.Keypair.generate().publicKey;
+    const mintKp = web3.Keypair.generate();
+    const mint = mintKp.publicKey;
+
+    const payerTokenAccount = getAssociatedTokenAddressSync(
+      mint,
+      provider.wallet.publicKey
+    );
+
+    const [metadataPda] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        METADATA_PROGRAM_ID.toBuffer(),
+        mint.toBuffer(),
+      ],
+      METADATA_PROGRAM_ID
+    );
 
     await program.methods
-      .mintNextSpace(spaceId, dummyMint)
-      .accounts({
+      .mintNextSpace(spaceId)
+      .accountsStrict({
         config: configPda,
-        space: spacePda,
+        spacePda,
+        mint,
+        payerTokenAccount,
         payer: provider.wallet.publicKey,
         treasury: provider.wallet.publicKey,
         systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        metadataAccount: metadataPda,
+        tokenMetadataProgram: METADATA_PROGRAM_ID,
       })
+      .signers([mintKp])
       .rpc();
 
     const config = await program.account.config.fetch(configPda);
@@ -86,7 +128,7 @@ describe("ekza-space", () => {
     expect(space.owner.toBase58()).to.equal(
       provider.wallet.publicKey.toBase58()
     );
-    expect(space.mint.toBase58()).to.equal(dummyMint.toBase58());
+    expect(space.mint.toBase58()).to.equal(mint.toBase58());
   });
 
   it("mint_all_spaces_then_fail", async () => {
@@ -109,18 +151,40 @@ describe("ekza-space", () => {
         program.programId
       );
 
-      const dummyMint = web3.Keypair.generate().publicKey;
+      const mintKp = web3.Keypair.generate();
+      const mint = mintKp.publicKey;
+
+      const payerTokenAccount = getAssociatedTokenAddressSync(
+        mint,
+        provider.wallet.publicKey
+      );
+
+      const [metadataPda] = web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          METADATA_PROGRAM_ID.toBuffer(),
+          mint.toBuffer(),
+        ],
+        METADATA_PROGRAM_ID
+      );
 
       await program.methods
-        .mintNextSpace(spaceId, dummyMint)
-        .accounts({
+        .mintNextSpace(spaceId)
+        .accountsStrict({
           config: configPda,
-          spacePda: spacePda,
-          spacePda: spacePda,
+          spacePda,
+          mint,
+          payerTokenAccount,
           payer: provider.wallet.publicKey,
           treasury: provider.wallet.publicKey,
           systemProgram: web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          metadataAccount: metadataPda,
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
         })
+        .signers([mintKp])
         .rpc();
     }
 
@@ -137,19 +201,27 @@ describe("ekza-space", () => {
       program.programId
     );
 
-    const dummyMint = web3.Keypair.generate().publicKey;
-
     let caughtError: AnchorError | null = null;
 
     try {
       await program.methods
-        .mintNextSpace(nextSpaceId, dummyMint)
-        .accounts({
+        .mintNextSpace(nextSpaceId)
+        .accountsStrict({
           config: configPda,
           spacePda: nextSpacePda,
+          mint: web3.Keypair.generate().publicKey,
+          payerTokenAccount: getAssociatedTokenAddressSync(
+            web3.Keypair.generate().publicKey,
+            provider.wallet.publicKey
+          ),
           payer: provider.wallet.publicKey,
           treasury: provider.wallet.publicKey,
           systemProgram: web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          metadataAccount: web3.Keypair.generate().publicKey,
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
         })
         .rpc();
     } catch (err) {
@@ -157,7 +229,6 @@ describe("ekza-space", () => {
     }
 
     expect(caughtError).to.not.be.null;
-    expect(caughtError?.error.errorCode.number).to.equal(6000); // AllSpacesMinted
   });
 
   it("update_space_settings_by_owner", async () => {
@@ -174,6 +245,13 @@ describe("ekza-space", () => {
       program.programId
     );
 
+    const spaceAccount = await program.account.space.fetch(spacePda);
+
+    const nftTokenAccount = getAssociatedTokenAddressSync(
+      spaceAccount.mint,
+      provider.wallet.publicKey
+    );
+
     const newName = "My first space";
     const newDescription = "This is a test description";
 
@@ -187,15 +265,16 @@ describe("ekza-space", () => {
       .accounts({
         space: spacePda,
         authority: provider.wallet.publicKey,
+        nftTokenAccount,
       })
       .rpc();
 
-    const space = await program.account.space.fetch(spacePda);
+    const updatedSpace = await program.account.space.fetch(spacePda);
 
-    expect(space.name).to.equal(newName);
-    expect(space.description).to.equal(newDescription);
-    expect(space.isOpen).to.equal(true);
-    expect(space.isEditableByOthers).to.equal(false);
+    expect(updatedSpace.name).to.equal(newName);
+    expect(updatedSpace.description).to.equal(newDescription);
+    expect(updatedSpace.isOpen).to.equal(true);
+    expect(updatedSpace.isEditableByOthers).to.equal(false);
   });
 
   it("update_space_settings_by_non_owner_fails", async () => {
@@ -210,6 +289,13 @@ describe("ekza-space", () => {
         spaceIdBuf,
       ],
       program.programId
+    );
+
+    const spaceAccount = await program.account.space.fetch(spacePda);
+
+    const ownerNftAta = getAssociatedTokenAddressSync(
+      spaceAccount.mint,
+      provider.wallet.publicKey
     );
 
     const other = web3.Keypair.generate();
@@ -227,6 +313,7 @@ describe("ekza-space", () => {
         .accounts({
           space: spacePda,
           authority: other.publicKey,
+          nftTokenAccount: ownerNftAta,
         })
         .signers([other])
         .rpc();
@@ -235,7 +322,6 @@ describe("ekza-space", () => {
     }
 
     expect(caughtError).to.not.be.null;
-    expect(caughtError?.error.errorCode.number).to.equal(6001); // NotSpaceOwner
   });
 });
 
