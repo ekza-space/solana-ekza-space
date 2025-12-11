@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    metadata::{self, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3},
+    metadata::{self, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3, Metadata},
     token::{self, Mint, MintTo, Token, TokenAccount},
 };
 
@@ -71,7 +71,12 @@ pub struct MintNextSpace<'info> {
         seeds::program = token_metadata_program.key()
     )]
     pub metadata_account: UncheckedAccount<'info>,
-    /// CHECK: treated as unchecked for tests; CPI is attempted only if executable.
+
+    #[cfg(not(feature = "litesvm-test"))]
+    pub token_metadata_program: Program<'info, Metadata>,
+
+    #[cfg(feature = "litesvm-test")]
+    /// CHECK: In litesvm tests this is not an executable program; we only pass its pubkey.
     pub token_metadata_program: UncheckedAccount<'info>,
 }
 
@@ -118,13 +123,8 @@ pub fn mint_next_space(ctx: Context<MintNextSpace>, space_id: u32) -> Result<()>
     token::mint_to(cpi_ctx, 1)?;
 
     // Create Metaplex metadata for this mint via anchor_spl::metadata CPI.
-    // In litesvm / localtest environments token_metadata_program might not be
-    // deployed, so we only attempt CPI when the account is executable.
-    if ctx
-        .accounts
-        .token_metadata_program
-        .to_account_info()
-        .executable
+    // Disabled in litesvm-test builds.
+    #[cfg(not(feature = "litesvm-test"))]
     {
         let name = format!("Ekza Space #{}", space_id);
         let symbol = "SPACE".to_string();
