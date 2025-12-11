@@ -1,4 +1,9 @@
 use anchor_lang::prelude::*;
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    metadata::{self, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3, Metadata},
+    token::{self, Mint, MintTo, Token, TokenAccount},
+};
 
 use crate::{
     error::ErrorCode,
@@ -26,6 +31,23 @@ pub struct MintNextSpace<'info> {
     )]
     pub space_pda: Account<'info, Space>,
 
+    #[account(
+        init,
+        payer = payer,
+        mint::decimals = 0,
+        mint::authority = payer,
+        mint::freeze_authority = payer
+    )]
+    pub mint: Account<'info, Mint>,
+
+    #[account(
+        init,
+        payer = payer,
+        associated_token::mint = mint,
+        associated_token::authority = payer
+    )]
+    pub payer_token_account: Account<'info, TokenAccount>,
+
     #[account(mut)]
     pub payer: Signer<'info>,
 
@@ -37,16 +59,33 @@ pub struct MintNextSpace<'info> {
     pub treasury: SystemAccount<'info>,
 
     pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
+
+    /// CHECK: Metaplex metadata account PDA for this mint.
+    #[account(
+        mut,
+        seeds = [b"metadata", token_metadata_program.key().as_ref(), mint.key().as_ref()],
+        bump,
+        seeds::program = token_metadata_program.key()
+    )]
+    pub metadata_account: UncheckedAccount<'info>,
+    pub token_metadata_program: Program<'info, Metadata>,
 }
 
 /// Mint next available space and create its PDA.
 ///
 /// `space_id` must equal `config.minted_spaces + 1` and be within 1..=total_spaces.
-pub fn mint_next_space(ctx: Context<MintNextSpace>, space_id: u32, mint: Pubkey) -> Result<()> {
+pub fn mint_next_space(ctx: Context<MintNextSpace>, space_id: u32) -> Result<()> {
     let config = &mut ctx.accounts.config;
     let payer = &ctx.accounts.payer;
+    let mint = &ctx.accounts.mint;
 
-    require!(config.minted_spaces < config.total_spaces, ErrorCode::AllSpacesMinted);
+    require!(
+        config.minted_spaces < config.total_spaces,
+        ErrorCode::AllSpacesMinted
+    );
 
     let expected_id = config
         .minted_spaces
@@ -66,10 +105,51 @@ pub fn mint_next_space(ctx: Context<MintNextSpace>, space_id: u32, mint: Pubkey)
         anchor_lang::system_program::transfer(cpi_ctx, price)?;
     }
 
+    // Mint 1 NFT to payer's associated token account.
+    let payer_token_account = &ctx.accounts.payer_token_account;
+
+    let cpi_accounts = MintTo {
+        mint: mint.to_account_info(),
+        to: payer_token_account.to_account_info(),
+        authority: payer.to_account_info(),
+    };
+    let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+    token::mint_to(cpi_ctx, 1)?;
+
+    // Create Metaplex metadata for this mint via anchor_spl::metadata CPI.
+    let name = format!("Ekza Space #{}", space_id);
+    let symbol = "SPACE".to_string();
+    let uri = "".to_string();
+
+    let data = DataV2 {
+        name,
+        symbol,
+        uri,
+        seller_fee_basis_points: 0,
+        creators: None,
+        collection: None,
+        uses: None,
+    };
+
+    let cpi_accounts = CreateMetadataAccountsV3 {
+        metadata: ctx.accounts.metadata_account.to_account_info(),
+        mint: mint.to_account_info(),
+        mint_authority: payer.to_account_info(),
+        payer: payer.to_account_info(),
+        update_authority: payer.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        rent: ctx.accounts.rent.to_account_info(),
+    };
+    let cpi_ctx = CpiContext::new(
+        ctx.accounts.token_metadata_program.to_account_info(),
+        cpi_accounts,
+    );
+    metadata::create_metadata_accounts_v3(cpi_ctx, data, true, true, None)?;
+
     let space = &mut ctx.accounts.space_pda;
 
     space.space_id = space_id;
-    space.mint = mint;
+    space.mint = mint.key();
     space.owner = payer.key();
     space.name = String::new();
     space.description = String::new();

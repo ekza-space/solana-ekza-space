@@ -31,9 +31,8 @@ pub mod solana_ekza_space {
     pub fn mint_next_space(
         ctx: Context<MintNextSpace>,
         space_id: u32,
-        mint: Pubkey,
     ) -> Result<()> {
-        instructions::mint_next_space(ctx, space_id, mint)
+        instructions::mint_next_space(ctx, space_id)
     }
 
     /// Update editable settings for a space.
