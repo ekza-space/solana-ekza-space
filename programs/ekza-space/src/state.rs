@@ -37,9 +37,9 @@ pub struct Space {
     /// Human-readable name of the space.
     #[max_len(64)]
     pub name: String,
-    /// Longer description.
+    /// Off-chain config URI for this space (e.g. IPFS).
     #[max_len(512)]
-    pub description: String,
+    pub space_config_uri: String,
     /// Whether other users can enter this space.
     pub is_open: bool,
     /// Whether others are allowed to edit this space.

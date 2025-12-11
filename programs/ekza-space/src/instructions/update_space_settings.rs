@@ -24,7 +24,7 @@ pub struct UpdateSpaceSettings<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct UpdateSpaceSettingsArgs {
     pub name: Option<String>,
-    pub description: Option<String>,
+    pub space_config_uri: Option<String>,
     pub is_open: Option<bool>,
     pub is_editable_by_others: Option<bool>,
 }
@@ -45,12 +45,12 @@ pub fn update_space_settings(
         space.name = name;
     }
 
-    if let Some(description) = args.description {
+    if let Some(space_config_uri) = args.space_config_uri {
         require!(
-            description.len() <= Space::DESC_MAX_LEN,
+            space_config_uri.len() <= Space::DESC_MAX_LEN,
             ErrorCode::StringTooLong
         );
-        space.description = description;
+        space.space_config_uri = space_config_uri;
     }
 
     if let Some(is_open) = args.is_open {

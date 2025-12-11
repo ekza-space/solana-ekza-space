@@ -93,6 +93,9 @@ pub fn mint_next_space(
     space_id: u32,
     uri: Option<String>,
 ) -> Result<()> {
+    #[cfg(feature = "litesvm-test")]
+    let _ = uri;
+
     let config = &mut ctx.accounts.config;
     let payer = &ctx.accounts.payer;
     let mint = &ctx.accounts.mint;
@@ -196,7 +199,7 @@ pub fn mint_next_space(
     space.mint = mint.key();
     space.owner = payer.key();
     space.name = String::new();
-    space.description = String::new();
+    space.space_config_uri = String::new();
     space.is_open = true;
     space.is_editable_by_others = false;
     space.bump = ctx.bumps.space_pda;

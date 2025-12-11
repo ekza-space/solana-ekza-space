@@ -253,12 +253,12 @@ describe("ekza-space litesvm", () => {
     );
 
     const newName = "My first space";
-    const newDescription = "This is a test description";
+    const newConfigUri = "ipfs://bafy...space-config";
 
     await program.methods
       .updateSpaceSettings({
         name: newName,
-        description: newDescription,
+        spaceConfigUri: newConfigUri,
         isOpen: true,
         isEditableByOthers: false,
       })
@@ -272,7 +272,7 @@ describe("ekza-space litesvm", () => {
     const updatedSpace = await program.account.space.fetch(spacePda);
 
     expect(updatedSpace.name).to.equal(newName);
-    expect(updatedSpace.description).to.equal(newDescription);
+    expect(updatedSpace.spaceConfigUri).to.equal(newConfigUri);
     expect(updatedSpace.isOpen).to.equal(true);
     expect(updatedSpace.isEditableByOthers).to.equal(false);
   });
@@ -306,7 +306,7 @@ describe("ekza-space litesvm", () => {
       await program.methods
         .updateSpaceSettings({
           name: "Hacked name",
-          description: null,
+          spaceConfigUri: null,
           isOpen: null,
           isEditableByOthers: null,
         })
