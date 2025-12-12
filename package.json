@@ -1,11 +1,20 @@
 {
+  "name": "solana-ekza-space-sdk",
+  "version": "0.1.0",
   "license": "ISC",
+  "main": "dist/sdk/index.js",
+  "types": "dist/sdk/index.d.ts",
+  "files": [
+    "dist/sdk"
+  ],
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
+    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
+    "build": "tsc -p tsconfig.sdk.json"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.32.1"
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/spl-token": "^0.4.14"
   },
   "devDependencies": {
     "chai": "^4.3.4",
@@ -16,7 +25,6 @@
     "@types/mocha": "^9.0.0",
     "typescript": "^5.7.3",
     "prettier": "^2.6.2",
-    "anchor-litesvm": "^0.2.1",
-    "@solana/spl-token": "^0.4.14"
+    "anchor-litesvm": "^0.2.1"
   }
 }

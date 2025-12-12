@@ -1,32 +1,22 @@
 import { fromWorkspace, LiteSVMProvider } from "anchor-litesvm";
 import * as anchor from "@coral-xyz/anchor";
 import { Program, web3, AnchorError } from "@coral-xyz/anchor";
-import {
-  getAssociatedTokenAddressSync,
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
 import { expect } from "chai";
 import { SolanaEkzaSpace } from "../target/types/solana_ekza_space";
+import { EkzaSpaceClient } from "../sdk/ekzaSpaceClient";
 
 describe("ekza-space litesvm", () => {
   let client: any;
   let provider: LiteSVMProvider;
   let program: Program<SolanaEkzaSpace>;
-
-  const CONFIG_SEED = "config";
-  const SPACE_SEED = "space";
-  const METADATA_PROGRAM_ID = new web3.PublicKey(
-    "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-  );
-
-  let configPda: web3.PublicKey;
+  let sdk: EkzaSpaceClient;
 
   before(async () => {
     client = fromWorkspace("./");
     provider = new LiteSVMProvider(client);
     anchor.setProvider(provider);
     program = anchor.workspace.SolanaEkzaSpace as Program<SolanaEkzaSpace>;
+    sdk = new EkzaSpaceClient(provider, program);
 
     // fund wallet for tests
     client.airdrop(
@@ -34,31 +24,19 @@ describe("ekza-space litesvm", () => {
       BigInt(100 * web3.LAMPORTS_PER_SOL)
     );
 
-    [configPda] = web3.PublicKey.findProgramAddressSync(
-      [Buffer.from(CONFIG_SEED)],
-      program.programId
-    );
-
     const totalSpaces = 3;
     const priceLamports = new anchor.BN(web3.LAMPORTS_PER_SOL);
 
-    await program.methods
-      .initConfig({
-        totalSpaces,
-        priceLamports,
-        treasury: provider.wallet.publicKey,
-        collectionMint: null,
-      })
-      .accountsStrict({
-        config: configPda,
-        payer: provider.wallet.publicKey,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .rpc();
+    await sdk.initConfig({
+      totalSpaces,
+      priceLamports,
+      treasury: provider.wallet.publicKey,
+      collectionMint: null,
+    });
   });
 
   it("init_config_works", async () => {
-    const config = await program.account.config.fetch(configPda);
+    const config = await sdk.getConfig();
 
     expect(config.authority.toBase58()).to.equal(
       provider.wallet.publicKey.toBase58()
@@ -72,56 +50,11 @@ describe("ekza-space litesvm", () => {
 
   it("mint_next_space_works", async () => {
     const spaceId = 1;
-    const spaceIdBuf = Buffer.alloc(4);
-    spaceIdBuf.writeUInt32LE(spaceId);
 
-    const [spacePda] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(SPACE_SEED),
-        configPda.toBuffer(),
-        spaceIdBuf,
-      ],
-      program.programId
-    );
+    const { spacePda, mint } = await sdk.mintNextSpace(spaceId, null);
 
-    const mintKp = web3.Keypair.generate();
-    const mint = mintKp.publicKey;
-
-    const payerTokenAccount = getAssociatedTokenAddressSync(
-      mint,
-      provider.wallet.publicKey
-    );
-
-    const [metadataPda] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("metadata"),
-        METADATA_PROGRAM_ID.toBuffer(),
-        mint.toBuffer(),
-      ],
-      METADATA_PROGRAM_ID
-    );
-
-    await program.methods
-      .mintNextSpace(spaceId, null)
-      .accountsStrict({
-        config: configPda,
-        spacePda,
-        mint,
-        payerTokenAccount,
-        payer: provider.wallet.publicKey,
-        treasury: provider.wallet.publicKey,
-        systemProgram: web3.SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-        metadataAccount: metadataPda,
-        tokenMetadataProgram: METADATA_PROGRAM_ID,
-      })
-      .signers([mintKp])
-      .rpc();
-
-    const config = await program.account.config.fetch(configPda);
-    const space = await program.account.space.fetch(spacePda);
+    const config = await sdk.getConfig();
+    const space = await sdk.getSpace(spacePda);
 
     expect(config.mintedSpaces).to.equal(1);
     expect(space.spaceId).to.equal(spaceId);
@@ -132,98 +65,22 @@ describe("ekza-space litesvm", () => {
   });
 
   it("mint_all_spaces_then_fail", async () => {
-    const configBefore = await program.account.config.fetch(configPda);
+    const configBefore = await sdk.getConfig();
 
     for (
       let spaceId = configBefore.mintedSpaces + 1;
       spaceId <= configBefore.totalSpaces;
       spaceId++
     ) {
-      const spaceIdBuf = Buffer.alloc(4);
-      spaceIdBuf.writeUInt32LE(spaceId);
-
-      const [spacePda] = web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(SPACE_SEED),
-          configPda.toBuffer(),
-          spaceIdBuf,
-        ],
-        program.programId
-      );
-
-      const mintKp = web3.Keypair.generate();
-      const mint = mintKp.publicKey;
-
-      const payerTokenAccount = getAssociatedTokenAddressSync(
-        mint,
-        provider.wallet.publicKey
-      );
-
-      const [metadataPda] = web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("metadata"),
-          METADATA_PROGRAM_ID.toBuffer(),
-          mint.toBuffer(),
-        ],
-        METADATA_PROGRAM_ID
-      );
-
-      await program.methods
-        .mintNextSpace(spaceId, null)
-        .accountsStrict({
-          config: configPda,
-          spacePda,
-          mint,
-          payerTokenAccount,
-          payer: provider.wallet.publicKey,
-          treasury: provider.wallet.publicKey,
-          systemProgram: web3.SystemProgram.programId,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          rent: web3.SYSVAR_RENT_PUBKEY,
-          metadataAccount: metadataPda,
-          tokenMetadataProgram: METADATA_PROGRAM_ID,
-        })
-        .signers([mintKp])
-        .rpc();
+      await sdk.mintNextSpace(spaceId, null);
     }
 
     const nextSpaceId = configBefore.totalSpaces + 1;
-    const nextSpaceIdBuf = Buffer.alloc(4);
-    nextSpaceIdBuf.writeUInt32LE(nextSpaceId);
-
-    const [nextSpacePda] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(SPACE_SEED),
-        configPda.toBuffer(),
-        nextSpaceIdBuf,
-      ],
-      program.programId
-    );
 
     let caughtError: AnchorError | null = null;
 
     try {
-      await program.methods
-        .mintNextSpace(nextSpaceId, null)
-        .accountsStrict({
-          config: configPda,
-          spacePda: nextSpacePda,
-          mint: web3.Keypair.generate().publicKey,
-          payerTokenAccount: getAssociatedTokenAddressSync(
-            web3.Keypair.generate().publicKey,
-            provider.wallet.publicKey
-          ),
-          payer: provider.wallet.publicKey,
-          treasury: provider.wallet.publicKey,
-          systemProgram: web3.SystemProgram.programId,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          rent: web3.SYSVAR_RENT_PUBKEY,
-          metadataAccount: web3.Keypair.generate().publicKey,
-          tokenMetadataProgram: METADATA_PROGRAM_ID,
-        })
-        .rpc();
+      await sdk.mintNextSpace(nextSpaceId, null);
     } catch (err) {
       caughtError = err as AnchorError;
     }
@@ -233,43 +90,18 @@ describe("ekza-space litesvm", () => {
 
   it("update_space_settings_by_owner", async () => {
     const spaceId = 1;
-    const spaceIdBuf = Buffer.alloc(4);
-    spaceIdBuf.writeUInt32LE(spaceId);
-
-    const [spacePda] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(SPACE_SEED),
-        configPda.toBuffer(),
-        spaceIdBuf,
-      ],
-      program.programId
-    );
-
-    const spaceAccount = await program.account.space.fetch(spacePda);
-
-    const nftTokenAccount = getAssociatedTokenAddressSync(
-      spaceAccount.mint,
-      provider.wallet.publicKey
-    );
 
     const newName = "My first space";
     const newConfigUri = "ipfs://bafy...space-config";
 
-    await program.methods
-      .updateSpaceSettings({
-        name: newName,
-        spaceConfigUri: newConfigUri,
-        isOpen: true,
-        isEditableByOthers: false,
-      })
-      .accounts({
-        space: spacePda,
-        authority: provider.wallet.publicKey,
-        nftTokenAccount,
-      })
-      .rpc();
+    await sdk.updateSpaceSettings(spaceId, {
+      name: newName,
+      spaceConfigUri: newConfigUri,
+      isOpen: true,
+      isEditableByOthers: false,
+    });
 
-    const updatedSpace = await program.account.space.fetch(spacePda);
+    const updatedSpace = await sdk.getSpaceById(spaceId);
 
     expect(updatedSpace.name).to.equal(newName);
     expect(updatedSpace.spaceConfigUri).to.equal(newConfigUri);
@@ -279,44 +111,22 @@ describe("ekza-space litesvm", () => {
 
   it("update_space_settings_by_non_owner_fails", async () => {
     const spaceId = 1;
-    const spaceIdBuf = Buffer.alloc(4);
-    spaceIdBuf.writeUInt32LE(spaceId);
-
-    const [spacePda] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(SPACE_SEED),
-        configPda.toBuffer(),
-        spaceIdBuf,
-      ],
-      program.programId
-    );
-
-    const spaceAccount = await program.account.space.fetch(spacePda);
-
-    const ownerNftAta = getAssociatedTokenAddressSync(
-      spaceAccount.mint,
-      provider.wallet.publicKey
-    );
 
     const other = web3.Keypair.generate();
 
     let caughtError: AnchorError | null = null;
 
     try {
-      await program.methods
-        .updateSpaceSettings({
+      await sdk.updateSpaceSettings(
+        spaceId,
+        {
           name: "Hacked name",
           spaceConfigUri: null,
           isOpen: null,
           isEditableByOthers: null,
-        })
-        .accounts({
-          space: spacePda,
-          authority: other.publicKey,
-          nftTokenAccount: ownerNftAta,
-        })
-        .signers([other])
-        .rpc();
+        },
+        other
+      );
     } catch (err) {
       caughtError = err as AnchorError;
     }
