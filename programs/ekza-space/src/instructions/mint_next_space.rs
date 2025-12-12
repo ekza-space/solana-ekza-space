@@ -11,6 +11,7 @@ use anchor_spl::{
     token::{self, Mint, MintTo, SetAuthority, Token, TokenAccount},
 };
 
+use crate::constants::{CONFIG_SEED, SPACE_SEED_ROOT};
 use crate::error::ErrorCode;
 use crate::events::SpaceMinted;
 use crate::state::{Config, Space};
@@ -22,7 +23,7 @@ use anchor_lang::Space as AnchorSpace;
 pub struct MintNextSpace<'info> {
     #[account(
         mut,
-        seeds = [b"config"],
+        seeds = [CONFIG_SEED],
         bump = config.bump,
     )]
     pub config: Account<'info, Config>,
@@ -31,7 +32,7 @@ pub struct MintNextSpace<'info> {
         init,
         payer = payer,
         space = 8 + Space::INIT_SPACE,
-        seeds = [b"space", config.key().as_ref(), &space_id.to_le_bytes()],
+        seeds = [SPACE_SEED_ROOT, config.key().as_ref(), &space_id.to_le_bytes()],
         bump
     )]
     pub space_pda: Account<'info, Space>,

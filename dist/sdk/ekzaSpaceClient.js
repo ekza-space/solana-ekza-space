@@ -4,7 +4,7 @@ exports.EkzaSpaceClient = exports.METADATA_PROGRAM_ID = exports.SPACE_SEED = exp
 const anchor_1 = require("@coral-xyz/anchor");
 const spl_token_1 = require("@solana/spl-token");
 exports.CONFIG_SEED = "config";
-exports.SPACE_SEED = "space";
+exports.SPACE_SEED = "space_v1";
 exports.METADATA_PROGRAM_ID = new anchor_1.web3.PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 class EkzaSpaceClient {
     constructor(provider, program) {

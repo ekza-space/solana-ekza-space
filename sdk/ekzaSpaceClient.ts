@@ -8,7 +8,7 @@ import {
 import { SolanaEkzaSpace } from "../target/types/solana_ekza_space";
 
 export const CONFIG_SEED = "config";
-export const SPACE_SEED = "space";
+export const SPACE_SEED = "space_v1";
 export const METADATA_PROGRAM_ID = new web3.PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 );

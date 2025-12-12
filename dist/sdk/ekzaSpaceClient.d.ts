@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program, web3, BN } from "@coral-xyz/anchor";
 import { SolanaEkzaSpace } from "../target/types/solana_ekza_space";
 export declare const CONFIG_SEED = "config";
-export declare const SPACE_SEED = "space";
+export declare const SPACE_SEED = "space_v1";
 export declare const METADATA_PROGRAM_ID: anchor.web3.PublicKey;
 type ProviderLike = {
     wallet: {

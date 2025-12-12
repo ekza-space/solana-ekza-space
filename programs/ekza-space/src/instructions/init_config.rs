@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::Space;
 
+use crate::constants::CONFIG_SEED;
 use crate::error::ErrorCode;
 use crate::state::Config;
 
@@ -10,7 +11,7 @@ pub struct InitConfig<'info> {
     #[account(
         init,
         payer = payer,
-        seeds = [b"config"],
+        seeds = [CONFIG_SEED],
         bump,
         space = 8 + Config::INIT_SPACE
     )]
