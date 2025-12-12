@@ -85,9 +85,9 @@ pub struct MintNextSpace<'info> {
     pub token_metadata_program: UncheckedAccount<'info>,
 }
 
-/// Mint next available space and create its PDA.
+/// Mint a space with a specific `space_id` and create its PDA.
 ///
-/// `space_id` must equal `config.minted_spaces + 1` and be within 1..=total_spaces.
+/// `space_id` must be within 1..=total_spaces and each id can only be minted once.
 pub fn mint_next_space(
     ctx: Context<MintNextSpace>,
     space_id: u32,
@@ -100,17 +100,18 @@ pub fn mint_next_space(
     let payer = &ctx.accounts.payer;
     let mint = &ctx.accounts.mint;
 
+    // Still enforce global supply limit.
     require!(
         config.minted_spaces < config.total_spaces,
         ErrorCode::AllSpacesMinted
     );
 
-    let expected_id = config
-        .minted_spaces
-        .checked_add(1)
-        .ok_or(ErrorCode::AllSpacesMinted)?;
-
-    require!(space_id == expected_id, ErrorCode::InvalidSpaceId);
+    // Allow users to choose any id within range, in any order.
+    // Each `space_id` maps to a unique PDA, so duplicates are prevented at the account level.
+    require!(
+        space_id >= 1 && space_id <= config.total_spaces,
+        ErrorCode::InvalidSpaceId
+    );
 
     // Transfer price from payer to treasury.
     let price = config.price_lamports;
@@ -205,7 +206,11 @@ pub fn mint_next_space(
     space.bump = ctx.bumps.space_pda;
     space.reserved = [0u8; 32];
 
-    config.minted_spaces = expected_id;
+    // Track total number of minted spaces (no longer tied to last minted id).
+    config.minted_spaces = config
+        .minted_spaces
+        .checked_add(1)
+        .ok_or(ErrorCode::AllSpacesMinted)?;
 
     emit!(SpaceMinted {
         space_id,
