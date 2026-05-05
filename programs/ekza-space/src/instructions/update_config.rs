@@ -23,7 +23,11 @@ pub fn update_config(ctx: Context<UpdateConfig>, args: UpdateConfigArgs) -> Resu
     let config = &mut ctx.accounts.config;
 
     // Explicit check in addition to `has_one = authority` for clearer error code.
-    require_keys_eq!(config.authority, ctx.accounts.authority.key(), ErrorCode::Unauthorized);
+    require_keys_eq!(
+        config.authority,
+        ctx.accounts.authority.key(),
+        ErrorCode::Unauthorized
+    );
 
     if let Some(price) = args.new_price_lamports {
         config.price_lamports = price;

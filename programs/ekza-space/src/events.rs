@@ -21,5 +21,3 @@ pub struct ConfigUpdated {
     pub price_lamports: u64,
     pub treasury: Pubkey,
 }
-
-
