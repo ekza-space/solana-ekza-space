@@ -1,6 +1,7 @@
 import { fromWorkspace, LiteSVMProvider } from "anchor-litesvm";
 import * as anchor from "@coral-xyz/anchor";
 import { Program, web3, AnchorError } from "@coral-xyz/anchor";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { expect } from "chai";
 import { SolanaEkzaSpace } from "../target/types/solana_ekza_space";
 import { EkzaSpaceClient } from "../sdk/ekzaSpaceClient";
@@ -133,5 +134,78 @@ describe("ekza-space litesvm", () => {
 
     expect(caughtError).to.not.be.null;
   });
-});
 
+  it("update_space_config_uri_by_other_when_editable", async () => {
+    const spaceId = 1;
+    const other = web3.Keypair.generate();
+
+    await sdk.updateSpaceSettings(spaceId, {
+      name: null,
+      spaceConfigUri: null,
+      isOpen: null,
+      isEditableByOthers: true,
+    });
+
+    const spaceBefore = await sdk.getSpaceById(spaceId);
+    const ownerTokenAccount = getAssociatedTokenAddressSync(
+      spaceBefore.mint,
+      provider.wallet.publicKey
+    );
+
+    const sharedConfigUri = "ipfs://bafy...shared-room-state";
+
+    await sdk.updateSpaceSettings(
+      spaceId,
+      {
+        name: null,
+        spaceConfigUri: sharedConfigUri,
+        isOpen: null,
+        isEditableByOthers: null,
+      },
+      other,
+      {
+        nftTokenAccount: ownerTokenAccount,
+      }
+    );
+
+    const updatedSpace = await sdk.getSpaceById(spaceId);
+
+    expect(updatedSpace.spaceConfigUri).to.equal(sharedConfigUri);
+    expect(updatedSpace.owner.toBase58()).to.equal(
+      provider.wallet.publicKey.toBase58()
+    );
+  });
+
+  it("update_owner_only_fields_by_other_when_editable_fails", async () => {
+    const spaceId = 1;
+    const other = web3.Keypair.generate();
+
+    const space = await sdk.getSpaceById(spaceId);
+    const ownerTokenAccount = getAssociatedTokenAddressSync(
+      space.mint,
+      provider.wallet.publicKey
+    );
+
+    let caughtError: AnchorError | null = null;
+
+    try {
+      await sdk.updateSpaceSettings(
+        spaceId,
+        {
+          name: "Not allowed",
+          spaceConfigUri: null,
+          isOpen: null,
+          isEditableByOthers: null,
+        },
+        other,
+        {
+          nftTokenAccount: ownerTokenAccount,
+        }
+      );
+    } catch (err) {
+      caughtError = err as AnchorError;
+    }
+
+    expect(caughtError).to.not.be.null;
+  });
+});

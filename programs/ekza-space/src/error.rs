@@ -17,6 +17,8 @@ pub enum ErrorCode {
     NftOwnershipRequired,
     #[msg("Total spaces must be greater than zero")]
     InvalidTotalSpaces,
+    #[msg("Only the NFT owner can update this field")]
+    OwnerOnlyField,
+    #[msg("Provided NFT token account does not match this space")]
+    InvalidNftTokenAccount,
 }
-
-

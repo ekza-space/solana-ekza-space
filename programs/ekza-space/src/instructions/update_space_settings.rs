@@ -12,11 +12,6 @@ pub struct UpdateSpaceSettings<'info> {
     pub authority: Signer<'info>,
 
     /// Token account that must hold the NFT representing this space.
-    #[account(
-        constraint = nft_token_account.owner == authority.key() @ ErrorCode::NftOwnershipRequired,
-        constraint = nft_token_account.mint == space.mint @ ErrorCode::NftOwnershipRequired,
-        constraint = nft_token_account.amount == 1 @ ErrorCode::NftOwnershipRequired,
-    )]
     pub nft_token_account: Account<'info, TokenAccount>,
 }
 
@@ -36,11 +31,25 @@ pub fn update_space_settings(
 ) -> Result<()> {
     let space = &mut ctx.accounts.space;
     let authority = &ctx.accounts.authority;
+    let nft_token_account = &ctx.accounts.nft_token_account;
 
-    // Sync on-chain owner with current NFT holder.
-    space.owner = authority.key();
+    require!(
+        nft_token_account.mint == space.mint && nft_token_account.amount == 1,
+        ErrorCode::InvalidNftTokenAccount
+    );
+
+    let is_nft_owner = nft_token_account.owner == authority.key();
+    let can_edit_shared_state = is_nft_owner || space.is_editable_by_others;
+
+    require!(can_edit_shared_state, ErrorCode::NftOwnershipRequired);
+
+    if is_nft_owner {
+        // Sync on-chain owner with current NFT holder.
+        space.owner = authority.key();
+    }
 
     if let Some(name) = args.name {
+        require!(is_nft_owner, ErrorCode::OwnerOnlyField);
         require!(name.len() <= Space::NAME_MAX_LEN, ErrorCode::StringTooLong);
         space.name = name;
     }
@@ -54,10 +63,12 @@ pub fn update_space_settings(
     }
 
     if let Some(is_open) = args.is_open {
+        require!(is_nft_owner, ErrorCode::OwnerOnlyField);
         space.is_open = is_open;
     }
 
     if let Some(is_editable_by_others) = args.is_editable_by_others {
+        require!(is_nft_owner, ErrorCode::OwnerOnlyField);
         space.is_editable_by_others = is_editable_by_others;
     }
 

@@ -127,20 +127,22 @@ export class EkzaSpaceClient {
 
     const treasury = opts?.treasury ?? payer;
 
-    let ix = this.program.methods.mintNextSpace(spaceId, uri ?? null).accountsStrict({
-      config: this.configPda,
-      spacePda,
-      mint,
-      payerTokenAccount,
-      payer,
-      treasury,
-      systemProgram: web3.SystemProgram.programId,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      rent: web3.SYSVAR_RENT_PUBKEY,
-      metadataAccount: metadataPda,
-      tokenMetadataProgram: METADATA_PROGRAM_ID,
-    });
+    let ix = this.program.methods
+      .mintNextSpace(spaceId, uri ?? null)
+      .accountsStrict({
+        config: this.configPda,
+        spacePda,
+        mint,
+        payerTokenAccount,
+        payer,
+        treasury,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        metadataAccount: metadataPda,
+        tokenMetadataProgram: METADATA_PROGRAM_ID,
+      });
 
     ix = ix.signers([mintKp]);
 
@@ -157,16 +159,18 @@ export class EkzaSpaceClient {
       isOpen: boolean | null;
       isEditableByOthers: boolean | null;
     },
-    authorityKp?: web3.Keypair
+    authorityKp?: web3.Keypair,
+    opts?: {
+      nftTokenAccount?: web3.PublicKey;
+    }
   ): Promise<void> {
     const spacePda = this.getSpacePda(spaceId);
     const authority = authorityKp?.publicKey ?? this.provider.wallet.publicKey;
 
     const spaceAccount = await this.program.account.space.fetch(spacePda);
-    const nftTokenAccount = getAssociatedTokenAddressSync(
-      spaceAccount.mint,
-      authority
-    );
+    const nftTokenAccount =
+      opts?.nftTokenAccount ??
+      getAssociatedTokenAddressSync(spaceAccount.mint, authority);
 
     let ix = this.program.methods
       .updateSpaceSettings({
@@ -188,4 +192,3 @@ export class EkzaSpaceClient {
     await ix.rpc();
   }
 }
-
