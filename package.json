@@ -1,6 +1,6 @@
 {
   "name": "solana-ekza-space-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "ISC",
   "main": "dist/sdk/index.js",
   "types": "dist/sdk/index.d.ts",
