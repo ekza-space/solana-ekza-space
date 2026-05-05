@@ -158,6 +158,8 @@ export class EkzaSpaceClient {
       spaceConfigUri: string | null;
       isOpen: boolean | null;
       isEditableByOthers: boolean | null;
+      addEditor?: web3.PublicKey | null;
+      removeEditor?: web3.PublicKey | null;
     },
     authorityKp?: web3.Keypair,
     opts?: {
@@ -168,9 +170,12 @@ export class EkzaSpaceClient {
     const authority = authorityKp?.publicKey ?? this.provider.wallet.publicKey;
 
     const spaceAccount = await this.program.account.space.fetch(spacePda);
+    const tokenAccountOwner = authority.equals(spaceAccount.owner)
+      ? authority
+      : spaceAccount.owner;
     const nftTokenAccount =
       opts?.nftTokenAccount ??
-      getAssociatedTokenAddressSync(spaceAccount.mint, authority);
+      getAssociatedTokenAddressSync(spaceAccount.mint, tokenAccountOwner);
 
     let ix = this.program.methods
       .updateSpaceSettings({
@@ -178,6 +183,8 @@ export class EkzaSpaceClient {
         spaceConfigUri: args.spaceConfigUri,
         isOpen: args.isOpen,
         isEditableByOthers: args.isEditableByOthers,
+        addEditor: args.addEditor ?? null,
+        removeEditor: args.removeEditor ?? null,
       })
       .accounts({
         space: spacePda,

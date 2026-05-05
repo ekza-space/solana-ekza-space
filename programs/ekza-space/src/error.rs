@@ -21,4 +21,10 @@ pub enum ErrorCode {
     OwnerOnlyField,
     #[msg("Provided NFT token account does not match this space")]
     InvalidNftTokenAccount,
+    #[msg("Editor list is full")]
+    TooManyEditors,
+    #[msg("Editor is already allowed")]
+    EditorAlreadyExists,
+    #[msg("Editor is not allowed")]
+    EditorNotFound,
 }

@@ -135,6 +135,147 @@ describe("ekza-space litesvm", () => {
     expect(caughtError).to.not.be.null;
   });
 
+  it("update_space_config_uri_by_editor", async () => {
+    const spaceId = 1;
+    const editor = web3.Keypair.generate();
+
+    await sdk.updateSpaceSettings(spaceId, {
+      name: null,
+      spaceConfigUri: null,
+      isOpen: null,
+      isEditableByOthers: false,
+      addEditor: editor.publicKey,
+    });
+
+    const editorConfigUri = "ipfs://bafy...editor-room-state";
+
+    await sdk.updateSpaceSettings(
+      spaceId,
+      {
+        name: null,
+        spaceConfigUri: editorConfigUri,
+        isOpen: null,
+        isEditableByOthers: null,
+      },
+      editor
+    );
+
+    const updatedSpace = await sdk.getSpaceById(spaceId);
+
+    expect(updatedSpace.spaceConfigUri).to.equal(editorConfigUri);
+    expect(
+      updatedSpace.editors.some((pubkey: web3.PublicKey) =>
+        pubkey.equals(editor.publicKey)
+      )
+    ).to.equal(true);
+  });
+
+  it("update_owner_only_fields_by_editor_fails", async () => {
+    const spaceId = 1;
+    const editorKeypair = web3.Keypair.generate();
+
+    await sdk.updateSpaceSettings(spaceId, {
+      name: null,
+      spaceConfigUri: null,
+      isOpen: null,
+      isEditableByOthers: false,
+      addEditor: editorKeypair.publicKey,
+    });
+
+    let caughtError: AnchorError | null = null;
+
+    try {
+      await sdk.updateSpaceSettings(
+        spaceId,
+        {
+          name: "Editor cannot rename",
+          spaceConfigUri: null,
+          isOpen: null,
+          isEditableByOthers: null,
+        },
+        editorKeypair
+      );
+    } catch (err) {
+      caughtError = err as AnchorError;
+    }
+
+    expect(caughtError).to.not.be.null;
+  });
+
+  it("remove_space_editor_revokes_editing", async () => {
+    const spaceId = 1;
+    const editor = web3.Keypair.generate();
+
+    await sdk.updateSpaceSettings(spaceId, {
+      name: null,
+      spaceConfigUri: null,
+      isOpen: null,
+      isEditableByOthers: false,
+      addEditor: editor.publicKey,
+    });
+
+    await sdk.updateSpaceSettings(spaceId, {
+      name: null,
+      spaceConfigUri: null,
+      isOpen: null,
+      isEditableByOthers: false,
+      removeEditor: editor.publicKey,
+    });
+
+    let caughtError: AnchorError | null = null;
+
+    try {
+      await sdk.updateSpaceSettings(
+        spaceId,
+        {
+          name: null,
+          spaceConfigUri: "ipfs://bafy...revoked-editor-state",
+          isOpen: null,
+          isEditableByOthers: null,
+        },
+        editor
+      );
+    } catch (err) {
+      caughtError = err as AnchorError;
+    }
+
+    expect(caughtError).to.not.be.null;
+  });
+
+  it("space_editor_list_is_limited_to_ten", async () => {
+    const spaceId = 2;
+    const editors = Array.from({ length: 11 }, () => web3.Keypair.generate());
+
+    for (const editor of editors.slice(0, 10)) {
+      await sdk.updateSpaceSettings(spaceId, {
+        name: null,
+        spaceConfigUri: null,
+        isOpen: null,
+        isEditableByOthers: null,
+        addEditor: editor.publicKey,
+      });
+    }
+
+    let caughtError: AnchorError | null = null;
+
+    try {
+      await sdk.updateSpaceSettings(spaceId, {
+        name: null,
+        spaceConfigUri: null,
+        isOpen: null,
+        isEditableByOthers: null,
+        addEditor: editors[10].publicKey,
+      });
+    } catch (err) {
+      caughtError = err as AnchorError;
+    }
+
+    const updatedSpace = await sdk.getSpaceById(spaceId);
+
+    expect(updatedSpace.editors.length).to.equal(10);
+    expect(caughtError).to.not.be.null;
+  });
+
   it("update_space_config_uri_by_other_when_editable", async () => {
     const spaceId = 1;
     const other = web3.Keypair.generate();

@@ -204,6 +204,7 @@ pub fn mint_next_space(
     space.space_config_uri = String::new();
     space.is_open = true;
     space.is_editable_by_others = false;
+    space.editors = Vec::new();
     space.bump = ctx.bumps.space_pda;
     space.reserved = [0u8; 32];
 

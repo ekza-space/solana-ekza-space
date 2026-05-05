@@ -22,6 +22,8 @@ pub struct UpdateSpaceSettingsArgs {
     pub space_config_uri: Option<String>,
     pub is_open: Option<bool>,
     pub is_editable_by_others: Option<bool>,
+    pub add_editor: Option<Pubkey>,
+    pub remove_editor: Option<Pubkey>,
 }
 
 /// Update editable settings for a space.
@@ -39,7 +41,8 @@ pub fn update_space_settings(
     );
 
     let is_nft_owner = nft_token_account.owner == authority.key();
-    let can_edit_shared_state = is_nft_owner || space.is_editable_by_others;
+    let is_editor = space.editors.contains(&authority.key());
+    let can_edit_shared_state = is_nft_owner || is_editor || space.is_editable_by_others;
 
     require!(can_edit_shared_state, ErrorCode::NftOwnershipRequired);
 
@@ -70,6 +73,29 @@ pub fn update_space_settings(
     if let Some(is_editable_by_others) = args.is_editable_by_others {
         require!(is_nft_owner, ErrorCode::OwnerOnlyField);
         space.is_editable_by_others = is_editable_by_others;
+    }
+
+    if let Some(editor) = args.add_editor {
+        require!(is_nft_owner, ErrorCode::OwnerOnlyField);
+        require!(
+            space.editors.len() < Space::MAX_EDITORS,
+            ErrorCode::TooManyEditors
+        );
+        require!(
+            !space.editors.contains(&editor),
+            ErrorCode::EditorAlreadyExists
+        );
+        space.editors.push(editor);
+    }
+
+    if let Some(editor) = args.remove_editor {
+        require!(is_nft_owner, ErrorCode::OwnerOnlyField);
+        let index = space
+            .editors
+            .iter()
+            .position(|existing_editor| *existing_editor == editor)
+            .ok_or(ErrorCode::EditorNotFound)?;
+        space.editors.remove(index);
     }
 
     emit!(SpaceSettingsUpdated {

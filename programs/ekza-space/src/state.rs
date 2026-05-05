@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 /// Maximum lengths for string fields in `Space`.
 pub const SPACE_NAME_MAX_LEN: usize = 64;
 pub const SPACE_DESC_MAX_LEN: usize = 512;
+pub const SPACE_MAX_EDITORS: usize = 10;
 
 /// Global configuration PDA.
 #[account]
@@ -44,6 +45,9 @@ pub struct Space {
     pub is_open: bool,
     /// Whether others are allowed to edit this space.
     pub is_editable_by_others: bool,
+    /// Explicit editor allowlist for shared room state updates.
+    #[max_len(10)]
+    pub editors: Vec<Pubkey>,
     /// Bump for space PDA.
     pub bump: u8,
     /// Reserved for future extensions.
@@ -53,6 +57,5 @@ pub struct Space {
 impl Space {
     pub const NAME_MAX_LEN: usize = SPACE_NAME_MAX_LEN;
     pub const DESC_MAX_LEN: usize = SPACE_DESC_MAX_LEN;
+    pub const MAX_EDITORS: usize = SPACE_MAX_EDITORS;
 }
-
-
