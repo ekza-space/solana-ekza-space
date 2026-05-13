@@ -12,7 +12,7 @@ pub use state::*;
 
 use crate::instructions::*;
 
-declare_id!("Bms233NNbKb5FAcsjCmmCAU98oCuBXwLrLXNE5sBRdbb");
+declare_id!("2WtuXG6AX3erRp6eK5WiSTEEBec5zprQ7qLyLENfMQEH");
 
 #[program]
 pub mod solana_ekza_space {
