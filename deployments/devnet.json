@@ -1,0 +1,15 @@
+{
+  "cluster": "devnet",
+  "rpcUrl": "https://api.devnet.solana.com",
+  "programId": "2WtuXG6AX3erRp6eK5WiSTEEBec5zprQ7qLyLENfMQEH",
+  "configPda": "Ano2MsdMRn2z1DRqZFFaSYnF78FsKoEn8M6tx8tt6F4p",
+  "collectionMint": "wLVVCbqt7WQELQnkYqxXp2PpKV2YgxpXTq6GP5FRzL6",
+  "authority": "Ab5TgPbcB8QVuormXYXHzRVkV7okAbzkS2sU2neKoWvQ",
+  "treasury": "Ab5TgPbcB8QVuormXYXHzRVkV7okAbzkS2sU2neKoWvQ",
+  "totalSpaces": 25,
+  "priceLamports": "250000000",
+  "royaltyBps": 500,
+  "maxPerWallet": 0,
+  "baseUri": "https://space.ekza.io/api/meta/",
+  "bootstrappedAt": "2026-08-21T19:56:29.423Z"
+}
