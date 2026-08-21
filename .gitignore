@@ -7,3 +7,4 @@ test-ledger
 .yarn
 *.tgz
 dist/
+deployments/localnet.json

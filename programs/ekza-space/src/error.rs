@@ -27,4 +27,26 @@ pub enum ErrorCode {
     EditorAlreadyExists,
     #[msg("Editor is not allowed")]
     EditorNotFound,
+    #[msg("Minting is paused")]
+    MintingPaused,
+    #[msg("Per-wallet mint limit reached")]
+    MintLimitReached,
+    #[msg("Royalty exceeds the allowed maximum")]
+    InvalidRoyaltyBps,
+    #[msg("Base URI must start with https:// or ipfs://")]
+    InvalidBaseUri,
+    #[msg("Collection has already been created")]
+    CollectionAlreadyCreated,
+    #[msg("Collection has not been created yet")]
+    CollectionNotCreated,
+    #[msg("Collection accounts do not match config")]
+    CollectionMismatch,
+    #[msg("Signer is not the program upgrade authority")]
+    NotUpgradeAuthority,
+    #[msg("Program data account is missing or invalid")]
+    InvalidProgramData,
+    #[msg("No pending authority transfer")]
+    NoPendingAuthority,
+    #[msg("Signer is not the pending authority")]
+    NotPendingAuthority,
 }

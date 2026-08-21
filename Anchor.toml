@@ -8,6 +8,12 @@ skip-lint = false
 [programs.localnet]
 solana_ekza_space = "2WtuXG6AX3erRp6eK5WiSTEEBec5zprQ7qLyLENfMQEH"
 
+[programs.devnet]
+solana_ekza_space = "2WtuXG6AX3erRp6eK5WiSTEEBec5zprQ7qLyLENfMQEH"
+
+[programs.mainnet]
+solana_ekza_space = "2WtuXG6AX3erRp6eK5WiSTEEBec5zprQ7qLyLENfMQEH"
+
 [registry]
 url = "https://api.apr.dev"
 
@@ -16,5 +22,11 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-litesvm = "anchor build -- --features litesvm-test && yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/ekza-space.ts"
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 \"tests/**/*.ts\""
+# Full suite against LiteSVM with the real Metaplex Token Metadata program
+# loaded from tests/fixtures/mpl_token_metadata.so (dumped from mainnet).
+litesvm = "anchor build && yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/ekza-space.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/ekza-space.ts"
+# Post-deploy bootstrap: init_config + create_collection. See scripts/bootstrap.ts.
+bootstrap = "yarn run ts-node -P tsconfig.json scripts/bootstrap.ts"
+status = "yarn run ts-node -P tsconfig.json scripts/status.ts"
+smoke = "yarn run ts-node -P tsconfig.json scripts/smoke.ts"

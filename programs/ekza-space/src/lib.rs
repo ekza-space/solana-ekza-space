@@ -18,7 +18,7 @@ declare_id!("2WtuXG6AX3erRp6eK5WiSTEEBec5zprQ7qLyLENfMQEH");
 pub mod solana_ekza_space {
     use super::*;
 
-    /// Initialize global config PDA.
+    /// Initialize global config PDA. Upgrade authority only.
     pub fn init_config(ctx: Context<InitConfig>, args: InitConfigArgs) -> Result<()> {
         instructions::init_config(ctx, args)
     }
@@ -28,13 +28,24 @@ pub mod solana_ekza_space {
         instructions::update_config(ctx, args)
     }
 
-    /// Mint next available space and create its PDA.
-    pub fn mint_next_space(
-        ctx: Context<MintNextSpace>,
-        space_id: u32,
-        uri: Option<String>,
-    ) -> Result<()> {
-        instructions::mint_next_space(ctx, space_id, uri)
+    /// Propose a new config authority (step 1 of 2). `Pubkey::default()` cancels.
+    pub fn propose_authority(ctx: Context<ProposeAuthority>, new_authority: Pubkey) -> Result<()> {
+        instructions::propose_authority(ctx, new_authority)
+    }
+
+    /// Accept a proposed authority transfer (step 2 of 2).
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        instructions::accept_authority(ctx)
+    }
+
+    /// Create the verified collection NFT. Must run once before any mint.
+    pub fn create_collection(ctx: Context<CreateCollection>) -> Result<()> {
+        instructions::create_collection(ctx)
+    }
+
+    /// Mint space `space_id` as a verified 1/1 NFT in the collection.
+    pub fn mint_space(ctx: Context<MintSpace>, space_id: u32) -> Result<()> {
+        instructions::mint_space(ctx, space_id)
     }
 
     /// Update editable settings for a space.
@@ -43,5 +54,10 @@ pub mod solana_ekza_space {
         args: UpdateSpaceSettingsArgs,
     ) -> Result<()> {
         instructions::update_space_settings(ctx, args)
+    }
+
+    /// Authority-only: rewrite a space's Metaplex metadata from current config.
+    pub fn refresh_space_metadata(ctx: Context<RefreshSpaceMetadata>) -> Result<()> {
+        instructions::refresh_space_metadata(ctx)
     }
 }
